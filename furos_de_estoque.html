@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estoque Morto — Controle de Peças</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="shortcut icon" href="assets/caminhao-grande.png" type="image/x-icon">
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+
+<body>
+
+  <header>
+    <div class="header-titles">
+      <h1>FUROS DE ESTOQUE</h1>
+      <p>Controle de Peças — Registro de Furos</p>
+    </div>
+    <div class="header-stats">
+      <div class="stat">
+        <div class="stat-val" id="stat-total">0</div>
+        <div class="stat-lbl">Registros</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="stat-month">0</div>
+        <div class="stat-lbl">Este Mês</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="stat-alocacoes">0</div>
+        <div class="stat-lbl">Alocações</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar">
+      <div>
+        <div class="section-label">Nova Entrada</div>
+
+        <div class="form-group">
+          <label>Código da Peça *</label>
+          <input type="text" id="f-codigo" placeholder="Ex: PEÇ-00142" autocomplete="off" />
+        </div>
+
+        <div class="form-group">
+          <label>Alocação *</label>
+          <input type="text" id="f-alocacao" placeholder="Ex: Corredor A / Prateleira 3" autocomplete="off" />
+        </div>
+
+        <div class="form-group">
+          <label>Quantidade *</label>
+          <input type="number" id="f-quantidade" placeholder="Ex: 5" min="1" value="1" autocomplete="off" />
+        </div>
+
+        <div class="form-group">
+          <label>Data de Inserção *</label>
+          <input type="date" id="f-data" />
+        </div>
+
+        <div class="form-group">
+          <label>Tipo de Furo</label>
+          <select id="f-tipo">
+            <option value="">— Selecione —</option>
+            <option value="Quebra / Dano físico">Quebra / Dano físico</option>
+            <option value="Peça obsoleta">Peça obsoleta</option>
+            <option value="Erro de inventário">Erro de inventário</option>
+            <option value="Desvio / Furto">Desvio / Furto</option>
+            <option value="Defeito de fabricação">Defeito de fabricação</option>
+            <option value="Vencimento / Validade">Vencimento / Validade</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Motivo / Observação</label>
+          <textarea id="f-motivo" placeholder="Descreva o motivo do furo..."></textarea>
+        </div>
+
+        <button class="btn btn-primary" onclick="addRecord()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Registrar Peça
+        </button>
+      </div>
+
+      <div>
+        <div class="section-label">Exportar</div>
+        <div class="export-row">
+          <button class="btn btn-ghost" onclick="exportXLS()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+            Exportar XLS
+          </button>
+          <button class="btn btn-ghost" onclick="exportPDF()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="9" y1="15" x2="15" y2="15" />
+            </svg>
+            Exportar PDF
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ── MAIN ── -->
+    <main class="main">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input type="text" id="search" placeholder="Buscar por código, alocação ou motivo…" oninput="renderTable()" />
+        </div>
+        <select class="filter-select" id="filter-tipo" onchange="renderTable()">
+          <option value="">Todos os tipos</option>
+          <option value="Quebra / Dano físico">Quebra / Dano físico</option>
+          <option value="Peça obsoleta">Peça obsoleta</option>
+          <option value="Erro de inventário">Erro de inventário</option>
+          <option value="Desvio / Furto">Desvio / Furto</option>
+          <option value="Defeito de fabricação">Defeito de fabricação</option>
+          <option value="Vencimento / Validade">Vencimento / Validade</option>
+          <option value="Outro">Outro</option>
+        </select>
+        <span class="record-count" id="rec-count">— registros</span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortBy('id')" id="th-id">#<span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('codigo')" id="th-codigo">Código<span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('quantidade')" id="th-quantidade">Qtd<span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('alocacao')" id="th-alocacao">Alocação<span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('data')" id="th-data">Data<span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('tipo')" id="th-tipo">Tipo de Furo<span class="sort-arrow">↕</span></th>
+              <th>Motivo</th>
+              <th style="width:90px;"></th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+        <div class="empty-state" id="empty-state" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M3 7l9-4 9 4v10l-9 4-9-4V7z" />
+            <path d="M12 3v18M3 7l9 4 9-4" />
+          </svg>
+          <p>Nenhum registro encontrado</p>
+          <span>Adicione uma peça pelo formulário ao lado</span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ── DELETE MODAL ── -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <h2>Remover Registro</h2>
+      <p>Tem certeza que deseja remover a peça <span class="modal-code" id="modal-code"></span> do estoque morto? Esta
+        ação não pode ser desfeita.</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDelete()">Remover</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── EDIT MODAL ── -->
+  <div class="modal-overlay" id="edit-modal">
+    <div class="modal">
+      <h2>Editar Registro</h2>
+      <div class="edit-badge">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+        </svg>
+        <span id="edit-badge-code">—</span>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Código da Peça *</label>
+          <input type="text" id="e-codigo" placeholder="Ex: PEÇ-00142" />
+        </div>
+        <div class="form-group">
+          <label>Quantidade *</label>
+          <input type="number" id="e-quantidade" placeholder="Ex: 5" min="1" />
+        </div>
+        <div class="form-group">
+          <label>Alocação *</label>
+          <input type="text" id="e-alocacao" placeholder="Ex: Corredor A / Prateleira 3" />
+        </div>
+        <div class="form-group">
+          <label>Data de Inserção *</label>
+          <input type="date" id="e-data" />
+        </div>
+        <div class="form-group">
+          <label>Tipo de Furo</label>
+          <select id="e-tipo">
+            <option value="">— Selecione —</option>
+            <option value="Quebra / Dano físico">Quebra / Dano físico</option>
+            <option value="Peça obsoleta">Peça obsoleta</option>
+            <option value="Erro de inventário">Erro de inventário</option>
+            <option value="Desvio / Furto">Desvio / Furto</option>
+            <option value="Defeito de fabricação">Defeito de fabricação</option>
+            <option value="Vencimento / Validade">Vencimento / Validade</option>
+            <option value="Outro">Outro</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Motivo / Observação</label>
+          <textarea id="e-motivo" placeholder="Descreva o motivo do furo..."></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost btn-sm" onclick="closeEditModal()">Cancelar</button>
+        <button class="btn btn-primary btn-sm" style="width:auto;" onclick="saveEdit()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+            <polyline points="17 21 17 13 7 13 7 21" />
+            <polyline points="7 3 7 8 15 8" />
+          </svg>
+          Salvar Alterações
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TOAST ── -->
+  <div id="toast"></div>
+</body>
+
+</html>
